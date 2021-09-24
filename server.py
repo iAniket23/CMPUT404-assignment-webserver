@@ -45,7 +45,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             self.get_content(data_path,"html")
         # if the requested resource if a directory
         elif isdir("www" + data_path):
-            self.handle_dir(data_path)
+            self.handle_dir(data_path, header)
             
         elif isfile("www"+data_path) and data_path:
             self.handle_file(data_path)
@@ -53,11 +53,11 @@ class MyWebServer(socketserver.BaseRequestHandler):
             self.get_error_404()
 
 
-    def handle_dir(self, data_path):
+    def handle_dir(self, data_path, header):
         # check if need to send 301 moved permanently or not
             if data_path[-1] != "/":
                 data_path += "/"
-                self.get_error_301(data_path)
+                self.get_error_301(data_path, header)
             else:
                 # it's a regular directory: must return index.html & base.css of that path
                 data_path = data_path + "index.html"
@@ -79,72 +79,37 @@ class MyWebServer(socketserver.BaseRequestHandler):
             self.get_error_404()
 
 
-    def get_content(self, request_resource, type):
+    def get_content(self, data_path, type):
         try:
-            file = open("www"+request_resource, 'r')
+            file = open("www"+ data_path, 'r')
             data = file.read()
             length = len(data)
-            message = "HTTP/1.1 200 OK\r\n"   
-            message += "Connection: close\r\n"
+            message = "HTTP/1.1 200 OK\r\n Connection: close\r\n"
             if type == "html":
                 now = datetime.now(timezone.utc)
                 date = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-                message += "Content-Type: text/html\r\n\r\n"+data
-                message += "Date: {}\r\n"
-                message += "Content-Length: {}\r\n"
-                message = message.format(date, length)
+                message += "Content-Type: text/html\r\n\r\n"+ data +" Date: {}\r\n Content-Length: {}\r\n".format(date, length)
                 self.request.sendall(bytearray(message, 'utf-8'))
             else:
-                message += "Content-Type: text/css\r\n\r\n"+data
+                message += "Content-Type: text/css\r\n\r\n"+ data
                 self.request.sendall(bytearray(message, 'utf-8'))
                 
         except Exception:
             self.get_error_404()
 
-    def get_error_405(self):
-        data = "405 Method Not Allowed\r\n\r\n"
-        len_data = len(data)
-        now = datetime.now(timezone.utc)
-        date = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        message = "HTTP/1.1 405 Method Not Allowed\r\n"
-        message += "Date: {}\r\n"
-        message += "Content-Length: {}\r\n"
-        message += "Connection: close\r\n"
-        message += "Content-Type: text/html\r\n\r\n"+data
-        message = message.format(date, len_data)
-        self.request.sendall(bytearray(message, 'utf-8'))
-
-    def get_error_404(self):
-        data = "404 Not Found\r\n\r\n"
-        length = len(data)
-        now = datetime.now(timezone.utc)
-        date = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        message = "HTTP/1.1 404 Not Found\r\n"
-        message += "Date: {}\r\n"
-        message += "Content-Length: {}\r\n"
-        message += "Connection: close\r\n"
-        message += "Content-Type: text/html\r\n\r\n"+data
-        message = message.format(date, length)
-        self.request.sendall(bytearray(message, 'utf-8'))
-   
-    def get_error_301(self, request_resource):
+    def get_error_301(self, data_path, header):
         try:
-            # request_resource = www/deep/    *already tag on the "/" at the handle() func
-            file = open("www"+request_resource+"index.html", 'r')
-            data = file.read()
-            length = len(data)
-            now = datetime.now(timezone.utc)
-            date = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
-            message = "HTTP/1.1 301 Moved Permanently\r\n"
-            message += "Date: {}\r\n"
-            message += "Content-Length: {}\r\n"
-            message += "Connection: close\r\n"
-            message += "Content-Type: text/html\r\n\r\n"+data
-            message = message.format(date, length)
-            self.request.sendall(bytearray(message, 'utf-8'))
+            self.request.sendall(
+                        bytearray(f"HTTP/1.1 301 Moved Permanently \nLocation:http://{header[2]}{data_path}/\r\n\r\n ","utf-8"))
         except Exception:
             self.get_error_404()
 
+    def get_error_405(self):
+        self.request.sendall(bytearray(f"HTTP/1.1 405 Method Not Allowed", "utf-8"))
+
+    def get_error_404(self):
+        self.request.sendall(bytearray(f"HTTP/1.1 404 NOT FOUND\r\n\r\n ","utf-8"))
+   
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
 
