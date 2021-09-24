@@ -4,8 +4,7 @@ from os.path import isdir
 from os.path import isfile
 from datetime import datetime, timezone
 
-# Copyright 2013 Abram Hindle, Eddie Antonio Santos    
-# Copyright 2021 Aniket Mishra
+# Copyright 2013 Abram Hindle, Eddie Antonio Santos
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,41 +34,57 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.data = self.request.recv(1024).strip()
+
+        # Decoding th request
         all_data = self.data.decode('utf-8').split('\r\n')
-        header = all_data[0].split()  # ['GET', '/base.css', 'HTTP/1.1']
+
+        # Parsing the contents
+        header = all_data[0].split()  # ['GET', '/', 'HTTP/1.1']
+        
+        # Getting the path
         data_path = header[1]
-        # if cannot handle ==> send 405 Method Not Allowed
+        
+        # Handling bad methods like "PUT"
         if header[0] != "GET":
             self.get_error_405()
+
+        # Checking for path with just '/'    
         if len(data_path) == 1 and data_path[0] == "/":
             data_path = data_path + "index.html"
-            self.get_content(data_path,"html")
-        # if the requested resource if a directory
+            self.get_content(data_path,"html") # getting the content
+        
+        # Checking if the path is a  directory
         elif isdir("www" + data_path):
             self.handle_dir(data_path, header)
             
-        elif isfile("www"+data_path) and data_path:
+        # Checking if the path is a file
+        elif isfile("www"+ data_path):
             self.handle_file(data_path)
+        
+        # If none then send 404 error
         else:
             self.get_error_404()
 
 
+    # Handling the Path Directory
     def handle_dir(self, data_path, header):
-        # check if need to send 301 moved permanently or not
+        # check if the it is moved
             if data_path[-1] != "/":
                 data_path += "/"
                 self.get_error_301(data_path, header)
             else:
-                # it's a regular directory: must return index.html & base.css of that path
                 data_path = data_path + "index.html"
                 self.get_content(data_path,"html")
 
+    # Handling the file
     def handle_file(self, data_path):
         if(data_path):
+            # checking if the type is html
             if data_path[-5:] == ".html":
                 type = ".html"
                 self.get_content(data_path, "html")
 
+            # checking for css file
             elif data_path[-4:] == ".css":
                 self.get_content(data_path, "css")
             
@@ -79,7 +94,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
         else:
             self.get_error_404()
 
-
+    # getting the content 
     def get_content(self, data_path, type):
         try:
             file = open("www"+ data_path, 'r')
@@ -101,7 +116,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def get_error_301(self, data_path, header):
         try:
             self.request.sendall(
-                        bytearray(f"HTTP/1.1 301 Moved Permanently \nLocation:http://{header[2]}{data_path}/\r\n\r\n ","utf-8"))
+                        bytearray(f"HTTP/1.1 301 Moved Permanently\n Location:http://{header[2]}{data_path}/\r\n\r\n ","utf-8"))
         except Exception:
             self.get_error_404()
 
