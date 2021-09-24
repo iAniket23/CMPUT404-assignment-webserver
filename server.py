@@ -1,6 +1,5 @@
 #  coding: utf-8
 import socketserver
-import os
 from os.path import isdir
 from os.path import isfile
 from datetime import datetime, timezone
